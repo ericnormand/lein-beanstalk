@@ -2,9 +2,7 @@
   (:require [leiningen.beanstalk.aws :as aws]
             [clojure.string :as str]
             [clojure.set :as set])
-  (:use [leiningen.help :only (help-for)]
-        [leiningen.ring.war :only (war-file-path)]
-        [leiningen.ring.uberwar :only (uberwar)]))
+  (:use [leiningen.help :only (help-for)]))
 
 (defn default-environments
   [project]
@@ -27,7 +25,8 @@
        (first)))
 
 (defn war-filename [project]
-  (str (:name project) "-" (aws/app-version project) ".war"))
+  (or (-> project :aws :beanstalk :war-file)
+      (throw (RuntimeException. "Please specify the war file in the project.clj"))))
 
 (defn deploy
   "Deploy the current project to Amazon Elastic Beanstalk."
@@ -36,7 +35,6 @@
   ([project env-name]
      (if-let [env (get-project-env project env-name)]
        (let [filename (war-filename project)]
-         (uberwar project filename)
          (aws/s3-upload-file project filename)
          (aws/create-app-version project filename)
          (aws/deploy-environment project env))
